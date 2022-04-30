@@ -28,6 +28,7 @@
 import /vendor/etc/init/hw/init.qcom.usb.rc
 import /vendor/etc/init/hw/init.target.rc
 import /vendor/etc/init/hw/init.gauguin.rc
+import /vendor/etc/init/hw/init.gauguin.fingerprint.rc
 
 on early-init
     mount tracefs tracefs /sys/kernel/tracing
