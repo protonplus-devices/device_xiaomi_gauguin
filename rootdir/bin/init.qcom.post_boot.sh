@@ -46,13 +46,6 @@ function disable_core_ctl() {
     fi
 }
 
-function disable_ppr()
-{
-   if [ -f  /sys/module/process_reclaim/parameters/enable_process_reclaim ]; then
-       echo 0 > /sys/module/process_reclaim/parameters/enable_process_reclaim
-   fi
-}
-
 function configure_memory_parameters() {
     # Set Memory parameters.
     #
@@ -180,31 +173,6 @@ else
     # wsf Range : 1..1000 So set to bare minimum value 1.
     echo 1 > /proc/sys/vm/watermark_scale_factor
 fi
-}
-
-function enable_memory_features()
-{
-    MemTotalStr=`cat /proc/meminfo | grep MemTotal`
-    MemTotal=${MemTotalStr:16:8}
-
-    if [ $MemTotal -le 2097152 ]; then
-        #Enable B service adj transition for 2GB or less memory
-        setprop ro.vendor.qti.sys.fw.bservice_enable true
-        setprop ro.vendor.qti.sys.fw.bservice_limit 5
-        setprop ro.vendor.qti.sys.fw.bservice_age 5000
-
-        #Enable Delay Service Restart
-        setprop ro.vendor.qti.am.reschedule_service true
-    fi
-}
-
-function start_hbtp()
-{
-        # Start the Host based Touch processing but not in the power off mode.
-        bootmode=`getprop ro.bootmode`
-        if [ "charger" != $bootmode ]; then
-                start vendor.hbtp
-        fi
 }
 
 case "$target" in
