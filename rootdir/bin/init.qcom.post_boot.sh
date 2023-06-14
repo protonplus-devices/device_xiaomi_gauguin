@@ -31,92 +31,72 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
-target=`getprop ro.board.platform`
+# Core control parameters on silver
+echo 0 0 0 0 1 1 > /sys/devices/system/cpu/cpu0/core_ctl/not_preferred
+echo 4 > /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
+echo 60 > /sys/devices/system/cpu/cpu0/core_ctl/busy_up_thres
+echo 40 > /sys/devices/system/cpu/cpu0/core_ctl/busy_down_thres
+echo 100 > /sys/devices/system/cpu/cpu0/core_ctl/offline_delay_ms
+echo 8 > /sys/devices/system/cpu/cpu0/core_ctl/task_thres
 
-function configure_memory_parameters() {
-    # Disable wsf for all targets beacause we are using efk.
-    # wsf Range : 1..1000 So set to bare minimum value 1.
-    echo 1 > /proc/sys/vm/watermark_scale_factor
-fi
-}
+# Disable Core control on gold
+echo 0 > /sys/devices/system/cpu/cpu6/core_ctl/enable
 
-case "$target" in
-    "lito")
+# disable unfiltering
+echo 20000000 > /proc/sys/kernel/sched_task_unfilter_period
 
-    #Apply settings for lito
-    if [ -f /sys/devices/soc0/soc_id ]; then
-        soc_id=`cat /sys/devices/soc0/soc_id`
-    fi
+# Setting b.L scheduler parameters
+# default sched up and down migrate values are 95 and 85
+echo 65 > /proc/sys/kernel/sched_downmigrate
+echo 71 > /proc/sys/kernel/sched_upmigrate
 
-    #Apply settings for lagoon
-    case "$soc_id" in
-        "434" | "459" )
+# default sched up and down migrate values are 100 and 95
+echo 85 > /proc/sys/kernel/sched_group_downmigrate
+echo 100 > /proc/sys/kernel/sched_group_upmigrate
+echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
+echo 0 > /proc/sys/kernel/sched_coloc_busy_hyst_ns
+echo 0 > /proc/sys/kernel/sched_coloc_busy_hysteresis_enable_cpus
+echo 0 > /proc/sys/kernel/sched_coloc_busy_hyst_max_ms
 
-        # Core control parameters on silver
-        echo 0 0 0 0 1 1 > /sys/devices/system/cpu/cpu0/core_ctl/not_preferred
-        echo 4 > /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
-        echo 60 > /sys/devices/system/cpu/cpu0/core_ctl/busy_up_thres
-        echo 40 > /sys/devices/system/cpu/cpu0/core_ctl/busy_down_thres
-        echo 100 > /sys/devices/system/cpu/cpu0/core_ctl/offline_delay_ms
-        echo 8 > /sys/devices/system/cpu/cpu0/core_ctl/task_thres
+# configure governor settings for little cluster
+echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/up_rate_limit_us
+echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/down_rate_limit_us
+echo 1248000 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/hispeed_freq
+echo 576000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 
-        # Disable Core control on gold
-        echo 0 > /sys/devices/system/cpu/cpu6/core_ctl/enable
+# configure governor settings for big cluster
+echo "schedutil" > /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor
+echo 0 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/up_rate_limit_us
+echo 0 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/down_rate_limit_us
+echo 1248000 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_freq
+echo 652800 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
 
-        # disable unfiltering
-        echo 20000000 > /proc/sys/kernel/sched_task_unfilter_period
+#colocation v3 settings
+echo 740000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/rtg_boost_freq
+echo 0 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/rtg_boost_freq
+echo 51 > /proc/sys/kernel/sched_min_task_util_for_boost
 
-        # Setting b.L scheduler parameters
-        # default sched up and down migrate values are 95 and 85
-        echo 65 > /proc/sys/kernel/sched_downmigrate
-        echo 71 > /proc/sys/kernel/sched_upmigrate
+# sched_load_boost as -6 is equivalent to target load as 85. It is per cpu tunable.
+echo -6 >  /sys/devices/system/cpu/cpu6/sched_load_boost
+echo -6 >  /sys/devices/system/cpu/cpu7/sched_load_boost
+echo 85 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_load
 
-        # default sched up and down migrate values are 100 and 95
-        echo 85 > /proc/sys/kernel/sched_group_downmigrate
-        echo 100 > /proc/sys/kernel/sched_group_upmigrate
-        echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
-        echo 0 > /proc/sys/kernel/sched_coloc_busy_hyst_ns
-        echo 0 > /proc/sys/kernel/sched_coloc_busy_hysteresis_enable_cpus
-        echo 0 > /proc/sys/kernel/sched_coloc_busy_hyst_max_ms
+# Enable conservative pl
+echo 1 > /proc/sys/kernel/sched_conservative_pl
 
-        # configure governor settings for little cluster
-        echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-        echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/up_rate_limit_us
-        echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/down_rate_limit_us
-        echo 1248000 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/hispeed_freq
-        echo 576000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+echo "0:1248000" > /sys/devices/system/cpu/cpu_boost/input_boost_freq
+echo 120 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
 
-        # configure governor settings for big cluster
-        echo "schedutil" > /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor
-        echo 0 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/up_rate_limit_us
-        echo 0 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/down_rate_limit_us
-        echo 1248000 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_freq
-        echo 652800 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
+# Disable wsf for all targets beacause we are using efk.
+# wsf Range : 1..1000 So set to bare minimum value 1.
+echo 1 > /proc/sys/vm/watermark_scale_factor
 
-        #colocation v3 settings
-        echo 740000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/rtg_boost_freq
-        echo 0 > /sys/devices/system/cpu/cpufreq/policy6/schedutil/rtg_boost_freq
-        echo 51 > /proc/sys/kernel/sched_min_task_util_for_boost
-
-        # sched_load_boost as -6 is equivalent to target load as 85. It is per cpu tunable.
-        echo -6 >  /sys/devices/system/cpu/cpu6/sched_load_boost
-        echo -6 >  /sys/devices/system/cpu/cpu7/sched_load_boost
-        echo 85 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_load
-
-        # Enable conservative pl
-        echo 1 > /proc/sys/kernel/sched_conservative_pl
-
-        echo "0:1248000" > /sys/devices/system/cpu/cpu_boost/input_boost_freq
-        echo 120 > /sys/devices/system/cpu/cpu_boost/input_boost_ms
-
-        # Set Memory parameters
-        configure_memory_parameters
-
-        # Enable bus-dcvs
-        for device in /sys/devices/platform/soc
-        do
-            for cpubw in $device/*cpu-cpu-llcc-bw/devfreq/*cpu-cpu-llcc-bw
-            do
+# Enable bus-dcvs
+for device in /sys/devices/platform/soc
+	do
+	for cpubw in $device/*cpu-cpu-llcc-bw/devfreq/*cpu-cpu-llcc-bw
+	    do
                 echo "bw_hwmon" > $cpubw/governor
                 echo "2288 4577 7110 9155 12298 14236" > $cpubw/bw_hwmon/mbps_zones
                 echo 4 > $cpubw/bw_hwmon/sample_ms
@@ -130,7 +110,7 @@ case "$target" in
                 echo 50 > $cpubw/polling_interval
             done
 
-            for llccbw in $device/*cpu-llcc-ddr-bw/devfreq/*cpu-llcc-ddr-bw
+	for llccbw in $device/*cpu-llcc-ddr-bw/devfreq/*cpu-llcc-ddr-bw
             do
                 echo "bw_hwmon" > $llccbw/governor
                 echo "1144 1720 2086 2929 3879 5931 6881 8137" > $llccbw/bw_hwmon/mbps_zones
@@ -145,7 +125,7 @@ case "$target" in
                 echo 40 > $llccbw/polling_interval
             done
 
-            for npubw in $device/*npu*-ddr-bw/devfreq/*npu*-ddr-bw
+	for npubw in $device/*npu*-ddr-bw/devfreq/*npu*-ddr-bw
             do
                 echo 1 > /sys/devices/virtual/npu/msm_npu/pwr
                 echo "bw_hwmon" > $npubw/governor
@@ -162,7 +142,7 @@ case "$target" in
                 echo 0 > /sys/devices/virtual/npu/msm_npu/pwr
             done
 
-            for npullccbw in $device/*npu*-llcc-bw/devfreq/*npu*-llcc-bw
+	for npullccbw in $device/*npu*-llcc-bw/devfreq/*npu*-llcc-bw
             do
                 echo 1 > /sys/devices/virtual/npu/msm_npu/pwr
                 echo "bw_hwmon" > $npullccbw/governor
@@ -182,29 +162,22 @@ case "$target" in
         # device/target specific folder
         setprop vendor.dcvs.prop 1
 
-        # cpuset parameters
-        echo 0-5 > /dev/cpuset/background/cpus
-        echo 0-5 > /dev/cpuset/system-background/cpus
+# cpuset parameters
+echo 0-5 > /dev/cpuset/background/cpus
+echo 0-5 > /dev/cpuset/system-background/cpus
 
-        # Turn off scheduler boost at the end
-        echo 0 > /proc/sys/kernel/sched_boost
+# Turn off scheduler boost at the end
+echo 0 > /proc/sys/kernel/sched_boost
 
-        # Turn off sleep modes
-        echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
-      ;;
-    esac
-esac
+# Turn off sleep modes
+echo 0 > /sys/module/lpm_levels/parameters/sleep_disabled
 
 chown -h system /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate
 chown -h system /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor
 chown -h system /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy
 
 # Post-setup services
-case "$target" in
-    "lito")
-        setprop vendor.post_boot.parsed 1
-    ;;
-esac
+setprop vendor.post_boot.parsed 1
 
 # Let kernel know our image version/variant/crm_version
 if [ -f /sys/devices/soc0/select_image ]; then
